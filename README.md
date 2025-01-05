@@ -50,6 +50,10 @@ This extension contributes the following settings:
 }
 ```
 
+## For Cursor Users
+
+If you are using the Cursor editor, you can find instructions on how to install extensions [here](https://www.cursor.com/how-to-install-extension).
+
 ## Related Projects
 
 ### CLI Version
