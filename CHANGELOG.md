@@ -1,3 +1,7 @@
+# Changelog
+
+## 0.0.1 (2025-01-05)
+
 # Change Log
 
 All notable changes to the "react-native-stylesheet-cleaner" extension will be documented in this file.
