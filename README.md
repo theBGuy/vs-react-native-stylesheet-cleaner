@@ -1,6 +1,9 @@
-## react-native-stylesheet-cleaner
+# React-Native-StyleSheet-Cleaner
+![Visual Studio Marketplace Downloads](https://img.shields.io/visual-studio-marketplace/d/theBGuy.react-native-stylesheet-cleaner)
 
-**Description**: This VS Code extension helps clean up unused styles in React Native projects. It identifies and removes unused styles from your stylesheets, making your code cleaner and more maintainable.
+This VS Code extension helps clean up unused styles in React Native projects. It identifies and removes unused styles from your stylesheets, making your code cleaner and more maintainable.
+
+![Screenshot](assets/image.png)
 
 ### Features
 
@@ -25,28 +28,19 @@ This extension contributes the following settings:
 - `extension.removeAllUnusedStyles`: Remove all unused styles from the current document.
 - `extension.removeSingleUnusedStyle`: Remove a single unused style from the current document.
 
-### Known Issues
-
-- None reported yet.
-
-### Release Notes
-
-#### 0.0.1
-
-- Initial release of react-native-stylesheet-cleaner.
-- Features include identifying and removing unused styles, diagnostics, and optional auto clean on save.
-
 ### Example Usage
 
 1. **Identify Unused Styles**: Open a React Native file and see warnings for unused styles.
-2. **Remove Unused Styles**: Use the command palette or context menu to remove unused styles.
+2. **Remove Unused Styles**: Use the command palette, context menu, or quick actions to remove unused styles.
 3. **Auto Clean on Save**: Enable the `autoCleanOnSave` setting to automatically clean unused styles on save.
 
 ### Usage Instructions
 
 1. **Install the Extension**: Search for `react-native-stylesheet-cleaner` in the VS Code extensions marketplace and install it.
 2. **Configure Settings**: Go to your VS Code settings and configure the `autoCleanOnSave` option if desired.
-3. **Use Commands**: Use the command palette (`Ctrl+Shift+P`) to run `Remove All Unused Styles`.
+3. **Use Commands**: Use the command palette (`Ctrl+Shift+P`) to remove all unused styles in the document.
+4. **Context Menu**: Right-click in the editor and select "Remove All Unused Styles" from the context menu to remove all unused styles in the document.
+5. **Quick Actions**: Use the quick actions (lightbulb icon) to remove either singular unused styles or trigger removing all unused styles.
 
 ### Example Configuration
 
@@ -56,7 +50,24 @@ This extension contributes the following settings:
 }
 ```
 
-### Contribution
+## Related Projects
 
-Feel free to open issues or submit pull requests on the [GitHub repository](https://github.com/your-repo/react-native-stylesheet-cleaner).
+### CLI Version
 
+If you prefer using a command-line interface, check out the CLI version of this package: [rn-native-stylesheet-cleaner](https://github.com/theBGuy/rn-native-stylesheet-cleaner). You can download it from npm and use it to clean up unused styles in your React Native projects from the terminal.
+
+```sh
+npm install -g rn-native-stylesheet-cleaner
+```
+
+## Contributing
+
+Contributions are welcome! Feel free to fork the repository and open a pull request with your improvements.
+
+1. Fork the repository.
+2. Create a new branch for your feature or fix.
+3. Submit a pull request explaining your changes.
+
+## License
+
+This project is licensed under the MIT License.
