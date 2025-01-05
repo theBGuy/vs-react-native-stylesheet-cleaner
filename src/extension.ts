@@ -328,6 +328,10 @@ export function activate(context: vscode.ExtensionContext) {
     updateDiagnostics(event.document)
   );
 
+  vscode.workspace.onDidCloseTextDocument((document) => {
+    diagnosticCollection.delete(document.uri);
+  });
+
   vscode.workspace.onWillSaveTextDocument(async (event) => {
     const config = vscode.workspace.getConfiguration("react-native-stylesheet-cleaner");
     const autoCleanOnSave = config.get<boolean>("autoCleanOnSave", false);
