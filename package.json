@@ -135,6 +135,7 @@
     "lint": "eslint src",
     "test": "vscode-test",
     "release": "release-it",
+    "build": "vsce package",
     "publish": "vsce publish"
   },
   "devDependencies": {

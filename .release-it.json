@@ -1,7 +1,8 @@
 {
   "$schema": "https://unpkg.com/release-it/schema/release-it.json",
   "github": {
-    "release": false
+    "release": true,
+    "assets": ["*.vsix"]
   },
   "npm": {
     "publish": false
@@ -22,7 +23,11 @@
   },
   "hooks": {
     "before:init": ["npm run lint"],
+    "before:git:release": "npm run build",
     "after:git:release": "npm run publish",
-    "after:release": "echo Successfully released ${name} v${version} to ${repo.repository}."
+    "after:release": [
+      "echo Successfully released ${name} v${version} to ${repo.repository}.",
+      "rm -f *.vsix"
+    ]
   }
 }
