@@ -1,0 +1,28 @@
+{
+  "$schema": "https://unpkg.com/release-it/schema/release-it.json",
+  "github": {
+    "release": false
+  },
+  "npm": {
+    "publish": false
+  },
+  "git": {
+    "changelog": "git log --pretty=format:\"* %s (%h)\" ${from}...${to}",
+    "push": true
+  },
+  "plugins": {
+    "@release-it/conventional-changelog": {
+      "preset": {
+        "name": "conventionalcommits"
+      },
+      "whatBump": false,
+      "ignoreRecommendedBump": true,
+      "infile": "CHANGELOG.md"
+    }
+  },
+  "hooks": {
+    "before:init": ["npm run lint"],
+    "after:git:release": "npm run publish",
+    "after:release": "echo Successfully released ${name} v${version} to ${repo.repository}."
+  }
+}
