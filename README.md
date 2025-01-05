@@ -1,6 +1,4 @@
-### Project Overview
-
-**Project Name**: react-native-stylesheet-cleaner
+## react-native-stylesheet-cleaner
 
 **Description**: This VS Code extension helps clean up unused styles in React Native projects. It identifies and removes unused styles from your stylesheets, making your code cleaner and more maintainable.
 
@@ -33,7 +31,7 @@ This extension contributes the following settings:
 
 ### Release Notes
 
-#### 1.0.0
+#### 0.0.1
 
 - Initial release of react-native-stylesheet-cleaner.
 - Features include identifying and removing unused styles, diagnostics, and optional auto clean on save.
@@ -48,7 +46,7 @@ This extension contributes the following settings:
 
 1. **Install the Extension**: Search for `react-native-stylesheet-cleaner` in the VS Code extensions marketplace and install it.
 2. **Configure Settings**: Go to your VS Code settings and configure the `autoCleanOnSave` option if desired.
-3. **Use Commands**: Use the command palette (`Ctrl+Shift+P`) to run `Remove All Unused Styles` or `Remove Single Unused Style`.
+3. **Use Commands**: Use the command palette (`Ctrl+Shift+P`) to run `Remove All Unused Styles`.
 
 ### Example Configuration
 
