@@ -2,7 +2,7 @@
   "name": "react-native-stylesheet-cleaner",
   "displayName": "react-native-stylesheet-cleaner",
   "description": "",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "engines": {
     "vscode": "^1.96.0"
   },

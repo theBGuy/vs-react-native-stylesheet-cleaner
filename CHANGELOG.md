@@ -1,5 +1,7 @@
 # Changelog
 
+## [0.0.3](https://github.com/theBGuy/vs-react-native-stylesheet-cleaner/compare/0.0.2...0.0.3) (2025-04-01)
+
 ## [0.0.2](https://github.com/theBGuy/vs-react-native-stylesheet-cleaner/compare/0.0.1...0.0.2) (2025-01-05)
 
 * Update readme (8be4833)
