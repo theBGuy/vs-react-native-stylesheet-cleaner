@@ -27,7 +27,7 @@
     "after:git:release": "npm run publish",
     "after:release": [
       "echo Successfully released ${name} v${version} to ${repo.repository}.",
-      "rm -f *.vsix"
+      "node scripts/cleanup.js"
     ]
   }
 }
