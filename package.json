@@ -55,12 +55,14 @@
     },
     "commands": [
       {
-        "command": "extension.removeAllUnusedStyles",
-        "title": "Remove All Unused Styles"
+        "command": "extension.removeSingleUnusedStyle",
+        "title": "Remove Single Unused Style",
+        "category": "StyleSheet Cleaner"
       },
       {
-        "command": "extension.removeSingleUnusedStyle",
-        "title": "Remove Single Unused Style"
+        "command": "extension.removeAllUnusedStyles",
+        "title": "Remove All Unused Styles",
+        "category": "StyleSheet Cleaner"
       }
     ],
     "menus": {
@@ -72,6 +74,10 @@
         }
       ],
       "commandPalette": [
+        {
+          "command": "extension.removeSingleUnusedStyle",
+          "when": "false"
+        },
         {
           "command": "extension.removeAllUnusedStyles",
           "when": "editorLangId == typescriptreact || editorLangId == javascriptreact"
