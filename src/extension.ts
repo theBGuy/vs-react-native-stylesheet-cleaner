@@ -1,20 +1,14 @@
 import ts from "typescript";
 import * as vscode from "vscode";
 
-function findStyleSheetCreateDeclarations(
-  sourceFile: ts.SourceFile
-): Record<string, ts.ObjectLiteralExpression> {
+function findStyleSheetCreateDeclarations(sourceFile: ts.SourceFile): Record<string, ts.ObjectLiteralExpression> {
   const styles: Record<string, ts.ObjectLiteralExpression> = {};
 
   function visit(node: ts.Node) {
-    if (
-      ts.isVariableDeclaration(node) &&
-      node.initializer &&
-      ts.isCallExpression(node.initializer)
-    ) {
+    if (ts.isVariableDeclaration(node) && node.initializer && ts.isCallExpression(node.initializer)) {
       const callExpression = node.initializer;
       const callText = callExpression.expression.getText();
-      
+
       if (callText === "StyleSheet.create") {
         const objectLiteral = callExpression.arguments[0];
         if (ts.isObjectLiteralExpression(objectLiteral)) {
@@ -25,7 +19,7 @@ function findStyleSheetCreateDeclarations(
           const arg = callExpression.arguments[0];
           if (ts.isArrowFunction(arg) || ts.isFunctionExpression(arg)) {
             const body = arg.body;
-            
+
             // Case: ({params}) => ({ ... })
             if (ts.isParenthesizedExpression(body) && ts.isObjectLiteralExpression(body.expression)) {
               styles[node.name.getText()] = body.expression;
@@ -36,8 +30,10 @@ function findStyleSheetCreateDeclarations(
                 const returnExpr = returnStatement.expression;
                 if (ts.isObjectLiteralExpression(returnExpr)) {
                   styles[node.name.getText()] = returnExpr;
-                } else if (ts.isParenthesizedExpression(returnExpr) && 
-                           ts.isObjectLiteralExpression(returnExpr.expression)) {
+                } else if (
+                  ts.isParenthesizedExpression(returnExpr) &&
+                  ts.isObjectLiteralExpression(returnExpr.expression)
+                ) {
                   styles[node.name.getText()] = returnExpr.expression;
                 }
               }
@@ -53,17 +49,11 @@ function findStyleSheetCreateDeclarations(
   return styles;
 }
 
-function findStyleUsages(
-  sourceFile: ts.SourceFile,
-  styleSheetName: string
-): Set<string> {
+function findStyleUsages(sourceFile: ts.SourceFile, styleSheetName: string): Set<string> {
   const usedStyles = new Set<string>();
 
   function visit(node: ts.Node) {
-    if (
-      ts.isPropertyAccessExpression(node) &&
-      node.expression.getText() === styleSheetName
-    ) {
+    if (ts.isPropertyAccessExpression(node) && node.expression.getText() === styleSheetName) {
       usedStyles.add(node.name.getText());
     }
     ts.forEachChild(node, visit);
@@ -73,36 +63,29 @@ function findStyleUsages(
   return usedStyles;
 }
 
-function getUnusedStyles(
-  declaredStyles: string[],
-  usedStyles: Set<string>
-): string[] {
+function getUnusedStyles(declaredStyles: string[], usedStyles: Set<string>): string[] {
   return declaredStyles.filter((style) => !usedStyles.has(style));
 }
 
 function createDiagnostics(
   unusedStyles: string[],
   document: vscode.TextDocument,
-  styleNode: ts.ObjectLiteralExpression
+  styleNode: ts.ObjectLiteralExpression,
 ): vscode.Diagnostic[] {
   return unusedStyles
     .map((styleName) => {
       const property = styleNode.properties.find(
-        (prop) =>
-          ts.isPropertyAssignment(prop) && prop.name.getText() === styleName
+        (prop) => ts.isPropertyAssignment(prop) && prop.name.getText() === styleName,
       );
       if (property) {
         const start = property.getStart();
         const end = property.getEnd();
-        const range = new vscode.Range(
-          document.positionAt(start),
-          document.positionAt(end)
-        );
+        const range = new vscode.Range(document.positionAt(start), document.positionAt(end));
 
         const diagnostic = new vscode.Diagnostic(
           range,
           `Style '${styleName}' is unused.`,
-          vscode.DiagnosticSeverity.Warning
+          vscode.DiagnosticSeverity.Warning,
         );
         diagnostic.code = "unusedStyle";
         diagnostic.source = "react-native-stylesheet-cleaner";
@@ -111,34 +94,25 @@ function createDiagnostics(
       }
       return undefined;
     })
-    .filter(
-      (diagnostic): diagnostic is vscode.Diagnostic => diagnostic !== undefined
-    );
+    .filter((diagnostic): diagnostic is vscode.Diagnostic => diagnostic !== undefined);
 }
 
 function removeStyleFromDocument(
   document: vscode.TextDocument,
   styleName: string,
   styleNode: ts.ObjectLiteralExpression,
-  edit: vscode.WorkspaceEdit
+  edit: vscode.WorkspaceEdit,
 ) {
   const property = styleNode.properties.find(
-    (prop) => ts.isPropertyAssignment(prop) && prop.name.getText() === styleName
+    (prop) => ts.isPropertyAssignment(prop) && prop.name.getText() === styleName,
   );
 
   if (property) {
     const start = property.getFullStart();
     const end = property.getEnd();
-    const nextChar = document.getText(
-      new vscode.Range(document.positionAt(end), document.positionAt(end + 1))
-    );
+    const nextChar = document.getText(new vscode.Range(document.positionAt(end), document.positionAt(end + 1)));
 
-    const previousChar = document.getText(
-      new vscode.Range(
-        document.positionAt(start - 1),
-        document.positionAt(start)
-      )
-    );
+    const previousChar = document.getText(new vscode.Range(document.positionAt(start - 1), document.positionAt(start)));
 
     let adjustedStart = start;
     let adjustedEnd = end;
@@ -152,10 +126,7 @@ function removeStyleFromDocument(
       adjustedEnd += 1;
     }
 
-    const range = new vscode.Range(
-      document.positionAt(adjustedStart),
-      document.positionAt(adjustedEnd)
-    );
+    const range = new vscode.Range(document.positionAt(adjustedStart), document.positionAt(adjustedEnd));
 
     edit.delete(document.uri, range);
   }
@@ -164,7 +135,7 @@ function removeStyleFromDocument(
 function removeSingleUnusedStyleFromDocument(
   document: vscode.TextDocument,
   styleName: string,
-  styleNode: ts.ObjectLiteralExpression
+  styleNode: ts.ObjectLiteralExpression,
 ) {
   const edit = new vscode.WorkspaceEdit();
   removeStyleFromDocument(document, styleName, styleNode, edit);
@@ -172,9 +143,7 @@ function removeSingleUnusedStyleFromDocument(
   vscode.workspace.applyEdit(edit).then((success) => {
     if (success) {
       vscode.commands.executeCommand("editor.action.formatDocument");
-      vscode.window.showInformationMessage(
-        `Unused style '${styleName}' removed successfully!`
-      );
+      vscode.window.showInformationMessage(`Unused style '${styleName}' removed successfully!`);
     } else {
       vscode.window.showErrorMessage("Failed to remove unused style.");
     }
@@ -184,7 +153,7 @@ function removeSingleUnusedStyleFromDocument(
 function removeUnusedStylesFromDocument(
   document: vscode.TextDocument,
   unusedStyles: string[],
-  styleNode: ts.ObjectLiteralExpression
+  styleNode: ts.ObjectLiteralExpression,
 ) {
   const edit = new vscode.WorkspaceEdit();
 
@@ -195,9 +164,7 @@ function removeUnusedStylesFromDocument(
   vscode.workspace.applyEdit(edit).then((success) => {
     if (success) {
       vscode.commands.executeCommand("editor.action.formatDocument");
-      vscode.window.showInformationMessage(
-        "Unused styles removed successfully!"
-      );
+      vscode.window.showInformationMessage("Unused styles removed successfully!");
     } else {
       vscode.window.showErrorMessage("Failed to remove unused styles.");
     }
@@ -208,8 +175,7 @@ function removeUnusedStylesFromDocument(
 export function activate(context: vscode.ExtensionContext) {
   console.log('"react-native-stylesheet-cleaner" is now active!');
 
-  const diagnosticCollection =
-    vscode.languages.createDiagnosticCollection("unusedStyles");
+  const diagnosticCollection = vscode.languages.createDiagnosticCollection("unusedStyles");
   context.subscriptions.push(diagnosticCollection);
 
   const removeAllStylesCommand = vscode.commands.registerCommand(
@@ -228,7 +194,7 @@ export function activate(context: vscode.ExtensionContext) {
         return;
       }
 
-      if (typeof _document.getText !== 'function') {
+      if (typeof _document.getText !== "function") {
         vscode.window.showErrorMessage("Invalid document object.");
         return;
       }
@@ -239,33 +205,24 @@ export function activate(context: vscode.ExtensionContext) {
           _document.getText(),
           ts.ScriptTarget.Latest,
           true,
-          ts.ScriptKind.TSX
+          ts.ScriptKind.TSX,
         );
 
         const styleDeclarations = findStyleSheetCreateDeclarations(sourceFile);
 
-        for (const [styleSheetName, objectLiteral] of Object.entries(
-          styleDeclarations
-        )) {
+        for (const [styleSheetName, objectLiteral] of Object.entries(styleDeclarations)) {
           const declaredStyles = objectLiteral.properties
-            .filter(
-              (prop): prop is ts.PropertyAssignment =>
-                ts.isPropertyAssignment(prop) && prop.name !== undefined
-            )
+            .filter((prop): prop is ts.PropertyAssignment => ts.isPropertyAssignment(prop) && prop.name !== undefined)
             .map((prop) => prop.name.getText());
           const usedStyles = findStyleUsages(sourceFile, styleSheetName);
           const unusedStyles = getUnusedStyles(declaredStyles, usedStyles);
 
-          removeUnusedStylesFromDocument(
-            _document,
-            unusedStyles,
-            objectLiteral
-          );
+          removeUnusedStylesFromDocument(_document, unusedStyles, objectLiteral);
         }
       } catch (err) {
         console.error(err);
       }
-    }
+    },
   );
 
   const removeSingleStyleCommand = vscode.commands.registerCommand(
@@ -276,18 +233,13 @@ export function activate(context: vscode.ExtensionContext) {
         document.getText(),
         ts.ScriptTarget.Latest,
         true,
-        ts.ScriptKind.TSX
+        ts.ScriptKind.TSX,
       );
 
       const styleDeclarations = findStyleSheetCreateDeclarations(sourceFile);
-      for (const [styleSheetName, objectLiteral] of Object.entries(
-        styleDeclarations
-      )) {
+      for (const [styleSheetName, objectLiteral] of Object.entries(styleDeclarations)) {
         const declaredStyles = objectLiteral.properties
-          .filter(
-            (prop): prop is ts.PropertyAssignment =>
-              ts.isPropertyAssignment(prop) && prop.name !== undefined
-          )
+          .filter((prop): prop is ts.PropertyAssignment => ts.isPropertyAssignment(prop) && prop.name !== undefined)
           .map((prop) => prop.name.getText());
         const usedStyles = findStyleUsages(sourceFile, styleSheetName);
         const unusedStyles = getUnusedStyles(declaredStyles, usedStyles);
@@ -297,52 +249,38 @@ export function activate(context: vscode.ExtensionContext) {
             (prop) =>
               ts.isPropertyAssignment(prop) &&
               prop.name.getText() === style &&
-              document.positionAt(prop.getStart()).line === line
-          )
+              document.positionAt(prop.getStart()).line === line,
+          ),
         );
 
         if (unusedStyleAtLine) {
-          removeSingleUnusedStyleFromDocument(
-            document,
-            unusedStyleAtLine,
-            objectLiteral
-          );
+          removeSingleUnusedStyleFromDocument(document, unusedStyleAtLine, objectLiteral);
         }
       }
-    }
+    },
   );
 
   function updateDiagnostics(document: vscode.TextDocument) {
-    if (
-      document.languageId === "javascriptreact" ||
-      document.languageId === "typescriptreact"
-    ) {
+    if (document.languageId === "javascriptreact" || document.languageId === "typescriptreact") {
       const sourceFile = ts.createSourceFile(
         document.fileName,
         document.getText(),
         ts.ScriptTarget.Latest,
         true,
-        ts.ScriptKind.TSX
+        ts.ScriptKind.TSX,
       );
 
       const styleDeclarations = findStyleSheetCreateDeclarations(sourceFile);
       const diagnostics: vscode.Diagnostic[] = [];
 
-      for (const [styleSheetName, objectLiteral] of Object.entries(
-        styleDeclarations
-      )) {
+      for (const [styleSheetName, objectLiteral] of Object.entries(styleDeclarations)) {
         const declaredStyles = objectLiteral.properties
-          .filter(
-            (prop): prop is ts.PropertyAssignment =>
-              ts.isPropertyAssignment(prop) && prop.name !== undefined
-          )
+          .filter((prop): prop is ts.PropertyAssignment => ts.isPropertyAssignment(prop) && prop.name !== undefined)
           .map((prop) => prop.name.getText());
         const usedStyles = findStyleUsages(sourceFile, styleSheetName);
         const unusedStyles = getUnusedStyles(declaredStyles, usedStyles);
 
-        diagnostics.push(
-          ...createDiagnostics(unusedStyles, document, objectLiteral)
-        );
+        diagnostics.push(...createDiagnostics(unusedStyles, document, objectLiteral));
       }
 
       diagnosticCollection.set(document.uri, diagnostics);
@@ -350,9 +288,7 @@ export function activate(context: vscode.ExtensionContext) {
   }
 
   vscode.workspace.onDidOpenTextDocument(updateDiagnostics);
-  vscode.workspace.onDidChangeTextDocument((event) =>
-    updateDiagnostics(event.document)
-  );
+  vscode.workspace.onDidChangeTextDocument((event) => updateDiagnostics(event.document));
 
   vscode.workspace.onDidCloseTextDocument((document) => {
     diagnosticCollection.delete(document.uri);
@@ -369,28 +305,19 @@ export function activate(context: vscode.ExtensionContext) {
         document.getText(),
         ts.ScriptTarget.Latest,
         true,
-        ts.ScriptKind.TSX
+        ts.ScriptKind.TSX,
       );
 
       const styleDeclarations = findStyleSheetCreateDeclarations(sourceFile);
 
-      for (const [styleSheetName, objectLiteral] of Object.entries(
-        styleDeclarations
-      )) {
+      for (const [styleSheetName, objectLiteral] of Object.entries(styleDeclarations)) {
         const declaredStyles = objectLiteral.properties
-          .filter(
-            (prop): prop is ts.PropertyAssignment =>
-              ts.isPropertyAssignment(prop) && prop.name !== undefined
-          )
+          .filter((prop): prop is ts.PropertyAssignment => ts.isPropertyAssignment(prop) && prop.name !== undefined)
           .map((prop) => prop.name.getText());
         const usedStyles = findStyleUsages(sourceFile, styleSheetName);
         const unusedStyles = getUnusedStyles(declaredStyles, usedStyles);
 
-        removeUnusedStylesFromDocument(
-          document,
-          unusedStyles,
-          objectLiteral
-        );
+        removeUnusedStylesFromDocument(document, unusedStyles, objectLiteral);
       }
     }
   });
@@ -401,10 +328,9 @@ export function activate(context: vscode.ExtensionContext) {
       { scheme: "file", language: "typescriptreact" },
       new UnusedStylesCodeActionProvider(),
       {
-        providedCodeActionKinds:
-          UnusedStylesCodeActionProvider.providedCodeActionKinds,
-      }
-    )
+        providedCodeActionKinds: UnusedStylesCodeActionProvider.providedCodeActionKinds,
+      },
+    ),
   );
 
   context.subscriptions.push(
@@ -412,10 +338,9 @@ export function activate(context: vscode.ExtensionContext) {
       { scheme: "file", language: "javascriptreact" },
       new UnusedStylesCodeActionProvider(),
       {
-        providedCodeActionKinds:
-          UnusedStylesCodeActionProvider.providedCodeActionKinds,
-      }
-    )
+        providedCodeActionKinds: UnusedStylesCodeActionProvider.providedCodeActionKinds,
+      },
+    ),
   );
 }
 
@@ -426,7 +351,7 @@ class UnusedStylesCodeActionProvider implements vscode.CodeActionProvider {
     document: vscode.TextDocument,
     range: vscode.Range,
     context: vscode.CodeActionContext,
-    token: vscode.CancellationToken
+    token: vscode.CancellationToken,
   ): vscode.CodeAction[] {
     return context.diagnostics
       .filter((diagnostic) => diagnostic.code === "unusedStyle")
@@ -438,14 +363,11 @@ class UnusedStylesCodeActionProvider implements vscode.CodeActionProvider {
 
   private createRemoveSingleStyleAction(
     diagnostic: vscode.Diagnostic,
-    document: vscode.TextDocument
+    document: vscode.TextDocument,
   ): vscode.CodeAction {
     const styleNameMatch = diagnostic.message.match(/Style '(.+?)' is unused/);
     const styleName = styleNameMatch ? styleNameMatch[1] : "unknown style";
-    const action = new vscode.CodeAction(
-      `Remove unused style '${styleName}'`,
-      vscode.CodeActionKind.QuickFix
-    );
+    const action = new vscode.CodeAction(`Remove unused style '${styleName}'`, vscode.CodeActionKind.QuickFix);
     action.command = {
       command: "extension.removeSingleUnusedStyle",
       title: "Remove unused style",
@@ -456,13 +378,8 @@ class UnusedStylesCodeActionProvider implements vscode.CodeActionProvider {
     return action;
   }
 
-  private createRemoveAllStylesAction(
-    document: vscode.TextDocument
-  ): vscode.CodeAction {
-    const action = new vscode.CodeAction(
-      "Remove all unused styles",
-      vscode.CodeActionKind.QuickFix
-    );
+  private createRemoveAllStylesAction(document: vscode.TextDocument): vscode.CodeAction {
+    const action = new vscode.CodeAction("Remove all unused styles", vscode.CodeActionKind.QuickFix);
     action.command = {
       command: "extension.removeAllUnusedStyles",
       title: "Remove all unused styles",
