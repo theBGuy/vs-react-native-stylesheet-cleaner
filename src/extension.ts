@@ -12,12 +12,40 @@ function findStyleSheetCreateDeclarations(
     if (
       ts.isVariableDeclaration(node) &&
       node.initializer &&
-      ts.isCallExpression(node.initializer) &&
-      node.initializer.expression.getText() === "StyleSheet.create"
+      ts.isCallExpression(node.initializer)
     ) {
-      const objectLiteral = node.initializer.arguments[0];
-      if (ts.isObjectLiteralExpression(objectLiteral)) {
-        styles[node.name.getText()] = objectLiteral;
+      const callExpression = node.initializer;
+      const callText = callExpression.expression.getText();
+      
+      if (callText === "StyleSheet.create") {
+        const objectLiteral = callExpression.arguments[0];
+        if (ts.isObjectLiteralExpression(objectLiteral)) {
+          styles[node.name.getText()] = objectLiteral;
+        }
+      } else if (callText === "createStyleSheet") {
+        if (callExpression.arguments.length > 0) {
+          const arg = callExpression.arguments[0];
+          if (ts.isArrowFunction(arg) || ts.isFunctionExpression(arg)) {
+            const body = arg.body;
+            
+            // Case: ({params}) => ({ ... })
+            if (ts.isParenthesizedExpression(body) && ts.isObjectLiteralExpression(body.expression)) {
+              styles[node.name.getText()] = body.expression;
+            } else if (ts.isBlock(body)) {
+              // Case: ({params}) => { return { ... } }
+              const returnStatement = body.statements.find(ts.isReturnStatement);
+              if (returnStatement?.expression) {
+                const returnExpr = returnStatement.expression;
+                if (ts.isObjectLiteralExpression(returnExpr)) {
+                  styles[node.name.getText()] = returnExpr;
+                } else if (ts.isParenthesizedExpression(returnExpr) && 
+                           ts.isObjectLiteralExpression(returnExpr.expression)) {
+                  styles[node.name.getText()] = returnExpr.expression;
+                }
+              }
+            }
+          }
+        }
       }
     }
     ts.forEachChild(node, visit);
