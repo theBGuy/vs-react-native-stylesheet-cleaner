@@ -22,9 +22,7 @@ function findStyleSheetCreateDeclarations(
         if (ts.isObjectLiteralExpression(objectLiteral)) {
           styles[node.name.getText()] = objectLiteral;
         }
-      }
-      
-      else if (callText === "createStyleSheet") {
+      } else if (callText === "createStyleSheet") {
         if (callExpression.arguments.length > 0) {
           const arg = callExpression.arguments[0];
           if (ts.isArrowFunction(arg) || ts.isFunctionExpression(arg)) {
@@ -36,7 +34,7 @@ function findStyleSheetCreateDeclarations(
             } else if (ts.isBlock(body)) {
               // Case: ({params}) => { return { ... } }
               const returnStatement = body.statements.find(ts.isReturnStatement);
-              if (returnStatement && returnStatement.expression) {
+              if (returnStatement?.expression) {
                 const returnExpr = returnStatement.expression;
                 if (ts.isObjectLiteralExpression(returnExpr)) {
                   styles[node.name.getText()] = returnExpr;
