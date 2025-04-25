@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.4](https://github.com/theBGuy/vs-react-native-stylesheet-cleaner/compare/0.0.3...0.0.4) (2025-04-25)
+
+### Features
+
+* adding unistyles v2 createStyleSheet function detection ([#1](https://github.com/theBGuy/vs-react-native-stylesheet-cleaner/issues/1)) ([660da74](https://github.com/theBGuy/vs-react-native-stylesheet-cleaner/commit/660da7400a9387b1437311b3bf0c3cf9e063d6e4))
+
 ## [0.0.3](https://github.com/theBGuy/vs-react-native-stylesheet-cleaner/compare/0.0.2...0.0.3) (2025-04-01)
 
 ## [0.0.2](https://github.com/theBGuy/vs-react-native-stylesheet-cleaner/compare/0.0.1...0.0.2) (2025-01-05)
