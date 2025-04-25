@@ -138,13 +138,14 @@
     "watch-tests": "tsc -p . -w --outDir out",
     "pretest": "npm run compile-tests && npm run compile && npm run lint",
     "check-types": "tsc --noEmit",
-    "lint": "eslint src",
+    "lint": "biome check --write ./src/",
     "test": "vscode-test",
     "release": "release-it",
     "build": "vsce package",
     "publish": "vsce publish"
   },
   "devDependencies": {
+    "@biomejs/biome": "1.9.4",
     "@release-it/conventional-changelog": "^9.0.4",
     "@types/mocha": "^10.0.10",
     "@types/node": "20.x",
@@ -155,7 +156,6 @@
     "@vscode/test-electron": "^2.4.1",
     "@vscode/vsce": "^3.2.1",
     "esbuild": "^0.24.0",
-    "eslint": "^9.16.0",
     "npm-run-all": "^4.1.5",
     "release-it": "^17.11.0",
     "typescript": "^5.7.2"
