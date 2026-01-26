@@ -349,9 +349,9 @@ class UnusedStylesCodeActionProvider implements vscode.CodeActionProvider {
 
   provideCodeActions(
     document: vscode.TextDocument,
-    range: vscode.Range,
+    _range: vscode.Range,
     context: vscode.CodeActionContext,
-    token: vscode.CancellationToken,
+    _token: vscode.CancellationToken,
   ): vscode.CodeAction[] {
     return context.diagnostics
       .filter((diagnostic) => diagnostic.code === "unusedStyle")

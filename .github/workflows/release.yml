@@ -1,0 +1,160 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (build only, no publish)'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  release:
+    name: Build and publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Get draft release
+        id: draft
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: releases } = await github.rest.repos.listReleases({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
+
+            const draft = releases.find(r => r.draft);
+            const latestPublished = releases.find(r => !r.draft && !r.prerelease);
+
+            if (!draft) {
+              core.setFailed('No draft release found. Merge some PRs first to create a draft release.');
+              return;
+            }
+
+            // Extract version from tag name (e.g., "v1.2.3" -> "1.2.3")
+            const version = draft.tag_name.replace(/^v/, '');
+            const previousTag = latestPublished?.tag_name || '';
+
+            core.setOutput('id', draft.id);
+            core.setOutput('version', version);
+            core.setOutput('tag', draft.tag_name);
+            core.setOutput('previous_tag', previousTag);
+            core.setOutput('body', draft.body || '');
+
+            console.log(`Found draft release: ${draft.name}`);
+            console.log(`Version: ${version}`);
+            console.log(`Previous tag: ${previousTag}`);
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Update package.json version
+        run: npm version ${{ steps.draft.outputs.version }} --no-git-tag-version
+
+      - name: Update changelog
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const version = '${{ steps.draft.outputs.version }}';
+            const releaseBody = process.env.RELEASE_BODY;
+            const date = new Date().toISOString().split('T')[0];
+            const previousTag = '${{ steps.draft.outputs.previous_tag }}';
+
+            const changelogPath = 'CHANGELOG.md';
+            let changelog = fs.readFileSync(changelogPath, 'utf8');
+
+            // Build the new changelog entry
+            const repoUrl = 'https://github.com/${{ github.repository }}';
+            const compareUrl = previousTag
+              ? `${repoUrl}/compare/${previousTag}...v${version}`
+              : `${repoUrl}/releases/tag/v${version}`;
+            const newEntry = `## [${version}](${compareUrl}) (${date})\n\n${releaseBody}\n`;
+
+            // Insert after the header (first two lines: title + description)
+            const lines = changelog.split('\n');
+            const headerEndIndex = lines.findIndex((line, i) => i > 0 && line.startsWith('## '));
+
+            if (headerEndIndex > 0) {
+              // Insert before the first version section
+              lines.splice(headerEndIndex, 0, newEntry);
+              changelog = lines.join('\n');
+            } else {
+              // No existing versions, append after header
+              changelog = changelog + '\n' + newEntry;
+            }
+
+            fs.writeFileSync(changelogPath, changelog);
+            console.log(`Updated CHANGELOG.md with version ${version}`);
+        env:
+          RELEASE_BODY: ${{ steps.draft.outputs.body }}
+
+      - name: Commit version bump and changelog
+        run: |
+          git add package.json CHANGELOG.md
+          git commit -m "chore(release): v${{ steps.draft.outputs.version }}"
+
+      - name: Create and push tag
+        id: push
+        run: |
+          git tag ${{ steps.draft.outputs.tag }}
+          git push origin HEAD:${{ github.ref_name }}
+          git push origin ${{ steps.draft.outputs.tag }}
+          echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Build extension
+        run: pnpm build
+
+      - name: Publish draft release
+        if: inputs.dry_run != true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.repos.updateRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: ${{ steps.draft.outputs.id }},
+              draft: false,
+              tag_name: '${{ steps.draft.outputs.tag }}',
+              target_commitish: '${{ steps.push.outputs.sha }}'
+            });
+            console.log('Published release ${{ steps.draft.outputs.tag }}');
+
+      - name: Publish to VS Code Marketplace
+        if: inputs.dry_run != true
+        run: npx vsce publish
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+
+      - name: Upload VSIX as artifact (dry run)
+        if: inputs.dry_run == true
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-vsix
+          path: '*.vsix'
+
+      - name: Cleanup VSIX files
+        run: rm -f *.vsix
