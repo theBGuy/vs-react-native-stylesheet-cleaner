@@ -1,20 +1,21 @@
 {
-    "files.exclude": {
-        "out": false,
-        "dist": false
-    },
-    "search.exclude": {
-        "out": true,
-        "dist": true
-    },
-    "typescript.tsc.autoDetect": "off",
-    "editor.tabSize": 2,
-    "editor.detectIndentation": false,
-    "editor.rulers": [120],
-    "editor.defaultFormatter": "biomejs.biome",
-    "editor.codeActionsOnSave": {
-      "source.organizeImports.biome": "explicit",
-      "source.removeUnusedImports": "always",
-      "quickfix.biome": "explicit"
-    }
+  "files.exclude": {
+    "out": false,
+    "dist": false
+  },
+  "search.exclude": {
+    "out": true,
+    "dist": true
+  },
+  "typescript.tsc.autoDetect": "off",
+  "editor.tabSize": 2,
+  "editor.detectIndentation": false,
+  "editor.rulers": [120],
+  "editor.defaultFormatter": "biomejs.biome",
+  "editor.codeActionsOnSave": {
+    "source.organizeImports.biome": "explicit",
+    "source.removeUnusedImports": "always",
+    "source.fixAll.biome": "explicit",
+    "source.biome": "explicit"
+  }
 }
