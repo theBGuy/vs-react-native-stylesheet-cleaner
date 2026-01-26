@@ -1,3 +1,5 @@
+import * as fs from "node:fs";
+import * as path from "node:path";
 import ts from "typescript";
 import * as vscode from "vscode";
 
@@ -13,6 +15,35 @@ function debounce<T extends (...args: Parameters<T>) => void>(fn: T, delay: numb
     if (timeoutId) clearTimeout(timeoutId);
     timeoutId = setTimeout(() => fn(...args), delay);
   }) as T;
+}
+
+// Find autoCleanOnSave setting by searching directory hierarchy
+// This handles the case where users have multiple projects in a parent folder
+function findAutoCleanOnSaveInHierarchy(filePath: string, workspaceRoot?: string): boolean | undefined {
+  let currentDir = path.dirname(filePath);
+  const root = workspaceRoot || path.parse(currentDir).root;
+
+  while (currentDir && currentDir.length >= root.length) {
+    const settingsPath = path.join(currentDir, ".vscode", "settings.json");
+    try {
+      if (fs.existsSync(settingsPath)) {
+        const content = fs.readFileSync(settingsPath, "utf-8");
+        const settings = JSON.parse(content);
+        const value = settings["react-native-stylesheet-cleaner.autoCleanOnSave"];
+        if (typeof value === "boolean") {
+          return value;
+        }
+      }
+    } catch {
+      // Ignore errors reading/parsing settings files
+    }
+
+    const parentDir = path.dirname(currentDir);
+    if (parentDir === currentDir) break; // Reached root
+    currentDir = parentDir;
+  }
+
+  return undefined;
 }
 
 function findStyleSheetCreateDeclarations(sourceFile: ts.SourceFile): Record<string, ts.ObjectLiteralExpression> {
@@ -441,8 +472,19 @@ export function activate(context: vscode.ExtensionContext) {
         return;
       }
 
-      const config = vscode.workspace.getConfiguration("react-native-stylesheet-cleaner");
-      const autoCleanOnSave = config.get<boolean>("autoCleanOnSave", false);
+      // First try VS Code's native configuration
+      const config = vscode.workspace.getConfiguration("react-native-stylesheet-cleaner", event.document.uri);
+      let autoCleanOnSave = config.get<boolean>("autoCleanOnSave", false);
+
+      // If VS Code config returns default (false), check directory hierarchy as fallback
+      // This handles the case where users have multiple projects in a parent folder
+      if (!autoCleanOnSave) {
+        const workspaceFolder = vscode.workspace.getWorkspaceFolder(event.document.uri);
+        const hierarchyValue = findAutoCleanOnSaveInHierarchy(event.document.uri.fsPath, workspaceFolder?.uri.fsPath);
+        if (hierarchyValue !== undefined) {
+          autoCleanOnSave = hierarchyValue;
+        }
+      }
 
       if (!autoCleanOnSave) {
         return;

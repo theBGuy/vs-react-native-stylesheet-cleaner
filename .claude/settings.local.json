@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(pnpm run compile:*)",
-      "Bash(pnpm run test:*)"
+      "Bash(pnpm run test:*)",
+      "Bash(pnpm test:*)"
     ]
   }
 }

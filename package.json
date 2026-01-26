@@ -44,11 +44,12 @@
   "main": "./dist/extension.js",
   "contributes": {
     "configuration": {
-      "type": "object",
+      "title": "React Native StyleSheet Cleaner",
       "properties": {
         "react-native-stylesheet-cleaner.autoCleanOnSave": {
           "type": "boolean",
           "default": false,
+          "scope": "resource",
           "description": "Automatically clean unused styles on file save."
         }
       }
