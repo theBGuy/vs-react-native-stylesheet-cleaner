@@ -139,7 +139,7 @@
     "pretest": "pnpm run compile-tests && pnpm run compile && pnpm run lint",
     "check-types": "tsc --noEmit",
     "lint": "biome check --write ./src/",
-    "lint:check": "biome check ./src/",
+    "lint:check": "biome ci ./src/",
     "test": "vscode-test",
     "release": "release-it",
     "build": "vsce package",
