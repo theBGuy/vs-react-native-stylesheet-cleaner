@@ -8,6 +8,15 @@ on:
         required: false
         type: boolean
         default: false
+      skip_to:
+        description: 'Resume from step (auto-detects by default)'
+        required: false
+        type: choice
+        default: 'auto'
+        options:
+          - auto
+          - publish_release
+          - publish_marketplace
 
 jobs:
   release:
@@ -66,15 +75,95 @@ jobs:
             console.log(`Version: ${version}`);
             console.log(`Previous tag: ${previousTag}`);
 
+      - name: Detect current state
+        id: state
+        run: |
+          TARGET_VERSION="${{ steps.draft.outputs.version }}"
+          TARGET_TAG="${{ steps.draft.outputs.tag }}"
+
+          # Check if tag already exists on remote
+          if git ls-remote --tags origin | grep -q "refs/tags/${TARGET_TAG}$"; then
+            echo "tag_exists=true" >> $GITHUB_OUTPUT
+            echo "::notice::Tag ${TARGET_TAG} already exists on remote"
+          else
+            echo "tag_exists=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Check current package.json version
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          echo "current_version=${CURRENT_VERSION}" >> $GITHUB_OUTPUT
+
+          if [ "$CURRENT_VERSION" = "$TARGET_VERSION" ]; then
+            echo "version_matches=true" >> $GITHUB_OUTPUT
+            echo "::notice::package.json already has version ${TARGET_VERSION}"
+          else
+            echo "version_matches=false" >> $GITHUB_OUTPUT
+            echo "::notice::package.json has version ${CURRENT_VERSION}, target is ${TARGET_VERSION}"
+          fi
+
+      - name: Determine steps to run
+        id: plan
+        run: |
+          SKIP_TO="${{ inputs.skip_to }}"
+          TAG_EXISTS="${{ steps.state.outputs.tag_exists }}"
+          VERSION_MATCHES="${{ steps.state.outputs.version_matches }}"
+
+          # Default: run everything
+          RUN_PREPARE="true"
+          RUN_PUSH="true"
+          RUN_PUBLISH_RELEASE="true"
+          RUN_PUBLISH_MARKETPLACE="true"
+
+          if [ "$SKIP_TO" = "publish_release" ]; then
+            RUN_PREPARE="false"
+            RUN_PUSH="false"
+            echo "::notice::Skipping to publish_release (manual override)"
+          elif [ "$SKIP_TO" = "publish_marketplace" ]; then
+            RUN_PREPARE="false"
+            RUN_PUSH="false"
+            RUN_PUBLISH_RELEASE="false"
+            echo "::notice::Skipping to publish_marketplace (manual override)"
+          elif [ "$SKIP_TO" = "auto" ]; then
+            # Auto-detect based on state
+            if [ "$TAG_EXISTS" = "true" ]; then
+              RUN_PREPARE="false"
+              RUN_PUSH="false"
+              echo "::notice::Tag exists, skipping prepare and push steps"
+            elif [ "$VERSION_MATCHES" = "true" ]; then
+              # Version matches but tag doesn't exist - check if we have unpushed commits
+              if git diff --quiet origin/${{ github.ref_name }} -- package.json CHANGELOG.md 2>/dev/null; then
+                echo "::notice::Version matches and no local changes - will prepare fresh"
+              else
+                RUN_PREPARE="false"
+                echo "::notice::Version already bumped, skipping prepare step"
+              fi
+            fi
+          fi
+
+          echo "run_prepare=${RUN_PREPARE}" >> $GITHUB_OUTPUT
+          echo "run_push=${RUN_PUSH}" >> $GITHUB_OUTPUT
+          echo "run_publish_release=${RUN_PUBLISH_RELEASE}" >> $GITHUB_OUTPUT
+          echo "run_publish_marketplace=${RUN_PUBLISH_MARKETPLACE}" >> $GITHUB_OUTPUT
+
+          echo "::group::Execution plan"
+          echo "  Prepare (version bump, changelog, commit): ${RUN_PREPARE}"
+          echo "  Push (commit and tag): ${RUN_PUSH}"
+          echo "  Publish GitHub release: ${RUN_PUBLISH_RELEASE}"
+          echo "  Publish to VS Code Marketplace: ${RUN_PUBLISH_MARKETPLACE}"
+          echo "::endgroup::"
+
       - name: Configure Git
+        if: steps.plan.outputs.run_prepare == 'true' || steps.plan.outputs.run_push == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Update package.json version
-        run: npm version ${{ steps.draft.outputs.version }} --no-git-tag-version
+        if: steps.plan.outputs.run_prepare == 'true'
+        run: npm version ${{ steps.draft.outputs.version }} --no-git-tag-version --allow-same-version
 
       - name: Update changelog
+        if: steps.plan.outputs.run_prepare == 'true'
         uses: actions/github-script@v7
         with:
           script: |
@@ -86,6 +175,12 @@ jobs:
 
             const changelogPath = 'CHANGELOG.md';
             let changelog = fs.readFileSync(changelogPath, 'utf8');
+
+            // Check if this version is already in the changelog
+            if (changelog.includes(`## [${version}]`)) {
+              console.log(`Version ${version} already in CHANGELOG.md, skipping`);
+              return;
+            }
 
             // Build the new changelog entry
             const repoUrl = 'https://github.com/${{ github.repository }}';
@@ -113,38 +208,89 @@ jobs:
           RELEASE_BODY: ${{ steps.draft.outputs.body }}
 
       - name: Commit version bump and changelog
+        if: steps.plan.outputs.run_prepare == 'true'
         run: |
-          git add package.json CHANGELOG.md
-          git commit -m "chore(release): v${{ steps.draft.outputs.version }}"
+          # Only commit if there are changes
+          if git diff --quiet package.json CHANGELOG.md; then
+            echo "No changes to commit"
+          else
+            git add package.json CHANGELOG.md
+            git commit -m "chore(release): v${{ steps.draft.outputs.version }}"
+          fi
 
-      - name: Create and push tag
+      - name: Push changes and create tag
+        if: steps.plan.outputs.run_push == 'true'
         id: push
         run: |
-          git tag ${{ steps.draft.outputs.tag }}
-          git push origin HEAD:${{ github.ref_name }}
-          git push origin ${{ steps.draft.outputs.tag }}
+          TAG="${{ steps.draft.outputs.tag }}"
+
+          # Push commit if we have unpushed changes
+          if ! git diff --quiet origin/${{ github.ref_name }} 2>/dev/null; then
+            echo "Pushing commit..."
+            git push origin HEAD:${{ github.ref_name }}
+          else
+            echo "No commits to push"
+          fi
+
+          # Create and push tag if it doesn't exist
+          if ! git ls-remote --tags origin | grep -q "refs/tags/${TAG}$"; then
+            echo "Creating tag ${TAG}..."
+            git tag -f "$TAG"
+            git push origin "$TAG"
+          else
+            echo "Tag ${TAG} already exists on remote"
+          fi
+
           echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Get release commit SHA
+        id: release_sha
+        run: |
+          TAG="${{ steps.draft.outputs.tag }}"
+          # If tag exists on remote, get its SHA; otherwise use current HEAD
+          if git ls-remote --tags origin | grep -q "refs/tags/${TAG}$"; then
+            SHA=$(git rev-parse "refs/tags/${TAG}" 2>/dev/null || git rev-parse HEAD)
+          else
+            SHA=$(git rev-parse HEAD)
+          fi
+          echo "sha=${SHA}" >> $GITHUB_OUTPUT
+          echo "Release will point to commit: ${SHA}"
 
       - name: Build extension
         run: pnpm build
 
       - name: Publish draft release
-        if: inputs.dry_run != true
+        if: inputs.dry_run != true && steps.plan.outputs.run_publish_release == 'true'
         uses: actions/github-script@v7
         with:
           script: |
+            const tag = '${{ steps.draft.outputs.tag }}';
+            const sha = '${{ steps.release_sha.outputs.sha }}';
+
+            // Check if release is still a draft
+            const { data: release } = await github.rest.repos.getRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: ${{ steps.draft.outputs.id }},
+            });
+
+            if (!release.draft) {
+              console.log(`Release ${tag} is already published, skipping`);
+              return;
+            }
+
             await github.rest.repos.updateRelease({
               owner: context.repo.owner,
               repo: context.repo.repo,
               release_id: ${{ steps.draft.outputs.id }},
               draft: false,
-              tag_name: '${{ steps.draft.outputs.tag }}',
-              target_commitish: '${{ steps.push.outputs.sha }}'
+              tag_name: tag,
+              target_commitish: sha
             });
-            console.log('Published release ${{ steps.draft.outputs.tag }}');
+            console.log(`Published release ${tag}`);
 
       - name: Publish to VS Code Marketplace
-        if: inputs.dry_run != true
+        if: inputs.dry_run != true && steps.plan.outputs.run_publish_marketplace == 'true'
         run: npx vsce publish
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
@@ -158,3 +304,18 @@ jobs:
 
       - name: Cleanup VSIX files
         run: rm -f *.vsix
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Step | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Version | ${{ steps.draft.outputs.version }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Tag | ${{ steps.draft.outputs.tag }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Prepare | ${{ steps.plan.outputs.run_prepare == 'true' && 'Ran' || 'Skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Push | ${{ steps.plan.outputs.run_push == 'true' && 'Ran' || 'Skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Publish Release | ${{ steps.plan.outputs.run_publish_release == 'true' && 'Ran' || 'Skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Publish Marketplace | ${{ steps.plan.outputs.run_publish_marketplace == 'true' && 'Ran' || 'Skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Dry Run | ${{ inputs.dry_run }} |" >> $GITHUB_STEP_SUMMARY
