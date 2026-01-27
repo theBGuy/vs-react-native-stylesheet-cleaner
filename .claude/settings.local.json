@@ -3,7 +3,8 @@
     "allow": [
       "Bash(pnpm run compile:*)",
       "Bash(pnpm run test:*)",
-      "Bash(pnpm test:*)"
+      "Bash(pnpm test:*)",
+      "Bash(pnpm build:*)"
     ]
   }
 }

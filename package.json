@@ -143,8 +143,8 @@
     "lint:check": "biome ci ./src/",
     "test": "vscode-test",
     "release": "release-it",
-    "build": "vsce package",
-    "publish": "vsce publish"
+    "build": "vsce package --no-dependencies",
+    "publish": "vsce publish --no-dependencies"
   },
   "devDependencies": {
     "@biomejs/biome": "2.3.13",
