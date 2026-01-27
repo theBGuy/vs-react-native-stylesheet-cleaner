@@ -517,7 +517,9 @@ const styles = StyleSheet.create({
     await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
   });
 
-  test("removeAllUnusedStyles command works", async () => {
+  test("removeAllUnusedStyles command works", async function () {
+    this.timeout(10000); // Increase timeout for CI environments
+
     // Create a fresh document
     const doc = await vscode.workspace.openTextDocument({
       language: "typescriptreact",
@@ -545,7 +547,9 @@ const styles = StyleSheet.create({
     await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
   });
 
-  test("autoCleanOnSave removes unused styles on save", async () => {
+  test("autoCleanOnSave removes unused styles on save", async function () {
+    this.timeout(10000); // Increase timeout for CI environments
+
     // Enable autoCleanOnSave
     await vscode.workspace
       .getConfiguration("react-native-stylesheet-cleaner")
