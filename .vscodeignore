@@ -12,3 +12,21 @@ vsc-extension-quickstart.md
 **/*.map
 **/*.ts
 **/.vscode-test.*
+
+# Config files
+.release-it.json
+biome.jsonc
+pnpm-lock.yaml
+pnpm-workspace.yaml
+
+# Directories
+.claude/**
+.github/**
+scripts/**
+assets/**
+
+# Other
+*.vsix
+.editorconfig
+.prettierrc*
+.eslintrc*
