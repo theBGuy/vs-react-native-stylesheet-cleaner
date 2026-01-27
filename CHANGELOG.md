@@ -13,6 +13,17 @@ All notable changes to the "react-native-stylesheet-cleaner" extension will be d
 **Full Changelog**: https://github.com/theBGuy/vs-react-native-stylesheet-cleaner/compare/0.0.4...v0.0.5
 
 
+## [0.0.5](https://github.com/theBGuy/vs-react-native-stylesheet-cleaner/compare/0.0.4...v0.0.5) (2026-01-27)
+
+## Changes
+
+## Bug Fixes
+
+* [Patch] Handle edge cases (#4) @theBGuy
+
+**Full Changelog**: https://github.com/theBGuy/vs-react-native-stylesheet-cleaner/compare/0.0.4...v0.0.5
+
+
 ## [0.0.4](https://github.com/theBGuy/vs-react-native-stylesheet-cleaner/compare/0.0.3...0.0.4) (2025-04-25)
 
 ### Features
