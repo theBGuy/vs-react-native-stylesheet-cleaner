@@ -3,12 +3,10 @@ import * as path from "node:path";
 import ts from "typescript";
 import * as vscode from "vscode";
 
-// Helper to check if document is a React file
 function isReactFile(document: vscode.TextDocument): boolean {
   return document.languageId === "javascriptreact" || document.languageId === "typescriptreact";
 }
 
-// Debounce utility
 function debounce<T extends (...args: Parameters<T>) => void>(fn: T, delay: number): T {
   let timeoutId: NodeJS.Timeout | undefined;
   return ((...args: Parameters<T>) => {
